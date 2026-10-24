@@ -751,15 +751,15 @@
                             </tr>
                         </thead>
                         <tbody id="shipmentTableBody">
-                            <tr data-tracking="TG-70261005-762" data-item="Document" data-from="Lagos" data-to="Abuja">
+                            <tr data-tracking="TG-70261005-762" data-item="Document" data-from="Lagos" data-to="London">
                                 <td><strong>TG-70261005-762</strong></td>
                                 <td><span class="item-badge"><i class="fa-solid fa-file-lines" style="color:var(--fedex-purple);"></i> Document</span></td>
-                                <td><span class="country-pill">Abuja</span></td>
+                                <td><span class="country-pill">London</span></td>
                             </tr>
-                            <tr data-tracking="TG-2016109-782" data-item="Smartphone" data-from="Accra" data-to="Johannesburg">
+                            <tr data-tracking="TG-2016109-782" data-item="Smartphone" data-from="Tokyo" data-to="São Paulo">
                                 <td><strong>TG-2016109-782</strong></td>
                                 <td><span class="item-badge"><i class="fa-solid fa-mobile-screen" style="color:#eab308;"></i> Phone</span></td>
-                                <td><span class="country-pill">Johannesburg</span></td>
+                                <td><span class="country-pill">São Paulo</span></td>
                             </tr>
                         </tbody>
                     </table>
@@ -779,7 +779,7 @@
                     </div>
                     <div class="input-group">
                         <label for="whatsapp">Receiver WhatsApp Number</label>
-                        <input type="tel" id="whatsapp" placeholder="e.g. +234 800 000 0000" required>
+                        <input type="tel" id="whatsapp" placeholder="e.g. +1 800 000 0000" required>
                     </div>
                     <div class="input-group">
                         <label for="address">Receiver Address</label>
@@ -791,11 +791,11 @@
                     </div>
                     <div class="input-group">
                         <label for="pickup">Pick Up Location</label>
-                        <input type="text" id="pickup" placeholder="e.g. Lagos, Nigeria" required>
+                        <input type="text" id="pickup" placeholder="e.g. New York, USA / Lagos" required>
                     </div>
                     <div class="input-group">
                         <label for="destination">Destination Location</label>
-                        <input type="text" id="destination" placeholder="e.g. Nairobi, Kenya" required>
+                        <input type="text" id="destination" placeholder="e.g. Tokyo, Japan / Paris" required>
                     </div>
                     <button type="submit" class="btn-submit">Generate Tracking Number</button>
                 </form>
@@ -836,7 +836,7 @@
                 </div>
                 <div class="sketch-info-row">
                     <div>From: <span id="modalFrom">Lagos</span></div>
-                    <div>To: <span id="modalTo">Abuja</span></div>
+                    <div>To: <span id="modalTo">London</span></div>
                 </div>
 
                 <div class="sketch-steps">
@@ -881,44 +881,56 @@
     <script>
         // Database storing generated bookings
         const shipmentDatabase = {
-            "TG-70261005-762": { item: "Document", from: "Lagos", to: "Abuja" },
-            "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg" }
+            "TG-70261005-762": { item: "Document", from: "Lagos", to: "London" },
+            "TG-2016109-782": { item: "Smartphone", from: "Tokyo", to: "São Paulo" }
         };
 
-        // African-focused & Global Coordinate Lookup
+        // Comprehensive Global Coordinate Lookup covering Africa, Asia, Europe, North America, and South America
         const cityCoordinates = {
-            // Nigeria & West Africa
+            // Africa
             "lagos": [6.5244, 3.3792],
             "abuja": [9.0765, 7.3986],
             "benin city": [6.3350, 5.6037],
-            "port harcourt": [4.8156, 7.0498],
-            "ibadan": [7.3775, 3.9470],
             "accra": [5.6037, -0.1870],
-            "kumasi": [6.6885, -1.6244],
-            "dakar": [14.7167, -17.4677],
-            "abidjan": [5.3600, -4.0083],
-
-            // North & East Africa
             "cairo": [30.0444, 31.2357],
-            "alexandria": [31.2001, 29.9187],
-            "casablanca": [33.5731, -7.5898],
-            "nairobi": [-1.2921, 36.8219],
-            "mombasa": [-4.0435, 39.6682],
-            "addis ababa": [9.0300, 38.7400],
-            "dar es salaam": [-6.7924, 39.2083],
-
-            // South & Central Africa
             "johannesburg": [-26.2041, 28.0473],
             "cape town": [-33.9249, 18.4241],
-            "durban": [-29.8587, 31.0218],
-            "luanda": [ -8.8390, 13.2894],
+            "nairobi": [-1.2921, 36.8219],
+            "casablanca": [33.5731, -7.5898],
 
-            // Major Global Hubs
+            // Europe
             "london": [51.5074, -0.1278],
             "paris": [48.8566, 2.3522],
-            "new york": [40.7128, -74.0060],
+            "berlin": [52.5200, 13.4050],
+            "madrid": [40.4168, -3.7038],
+            "rome": [41.9028, 12.4964],
+            "amsterdam": [52.3676, 4.9041],
+
+            // Asia
             "tokyo": [35.6762, 139.6503],
-            "dubai": [25.2048, 55.2708]
+            "beijing": [39.9042, 116.4074],
+            "shanghai": [31.2304, 121.4737],
+            "singapore": [1.3521, 103.8198],
+            "dubai": [25.2048, 55.2708],
+            "mumbai": [19.0760, 72.8777],
+            "seoul": [37.5665, 126.9780],
+
+            // North America
+            "new york": [40.7128, -74.0060],
+            "los angeles": [34.0522, -118.2437],
+            "chicago": [41.8781, -87.6298],
+            "toronto": [43.6532, -79.3832],
+            "mexico city": [19.4326, -99.1332],
+            "miami": [25.7617, -80.1918],
+
+            // South America
+            "são paulo": [-23.5505, -46.6333],
+            "sao paulo": [-23.5505, -46.6333],
+            "buenos aires": [-34.6037, -58.3816],
+            "rio de janeiro": [-22.9068, -43.1729],
+            "bogota": [4.7110, -74.0721],
+            "lima": [-12.0464, -77.0428],
+            "santiago": [-33.4489, -70.6693]
         };
 
         // Tab elements
@@ -1022,13 +1034,12 @@
             for (let i = 0; i < cleanName.length; i++) {
                 hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
             }
-            // Fallback coordinates bounded inside Africa if unknown
-            const lat = (Math.abs(hash) % 30) - 5;
-            const lng = ((hash >> 3) % 40) + 5;
+            const lat = (hash % 120) - 60;
+            const lng = ((hash >> 3) % 320) - 160;
             return [lat, lng];
         }
 
-        // Initialize Background Web Worker for continuous progress calculation
+        // Initialize Background Web Worker for continuous progress calculation across sessions
         function initBackgroundWorker() {
             const workerCode = `
                 let timers = {};
@@ -1065,11 +1076,10 @@
             worker.onmessage = function(e) {
                 const { trackingNo, progress, elapsed } = e.data;
                 
-                // Save progress in localStorage so it persists across page reloads/closes
+                // Save progress in localStorage so it persists even if the browser/tab is closed
                 localStorage.setItem(`shipment_${trackingNo}_progress`, progress);
                 localStorage.setItem(`shipment_${trackingNo}_elapsed`, elapsed);
 
-                // If modal is currently open for this tracking number, update live UI
                 if (modal.classList.contains('active') && modalTrackingNo.textContent === trackingNo) {
                     updateModalUIFromProgress(trackingNo, progress, elapsed);
                 }
@@ -1118,7 +1128,6 @@
             modalTo.textContent = shipment.to;
             modal.classList.add('active');
 
-            // Initialize or retrieve start time from localStorage
             let startTime = localStorage.getItem(`shipment_${trackingNo}_starttime`);
             if (!startTime) {
                 startTime = Date.now();
@@ -1127,10 +1136,8 @@
                 startTime = parseInt(startTime, 10);
             }
 
-            // Tell background worker to track this shipment
             worker.postMessage({ action: 'start', trackingNo, startTime });
 
-            // Reset status indicators based on existing progress
             let savedProgress = parseFloat(localStorage.getItem(`shipment_${trackingNo}_progress`) || "0");
             let savedElapsed = parseInt(localStorage.getItem(`shipment_${trackingNo}_elapsed`) || "0", 10);
 
@@ -1154,33 +1161,29 @@
                 const destCoords = getCoordsForCity(shipment.to);
 
                 if (!map) {
-                    // Center map over Africa by default (approx center: [7.3, 20.0], zoom level 3)
-                    map = L.map('map').setView([7.3, 20.0], 3);
+                    // Global view zoom level showing all continents
+                    map = L.map('map').setView([20, 0], 2);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 18,
                         attribution: '© OpenStreetMap'
                     }).addTo(map);
                 } else {
-                    map.setView([7.3, 20.0], 3);
+                    map.setView([20, 0], 2);
                     map.invalidateSize();
                 }
 
-                // Clear previous layers except tile layer
                 map.eachLayer((layer) => {
                     if (!layer._url) {
                         map.removeLayer(layer);
                     }
                 });
 
-                // Add Origin and Destination markers dynamically
                 L.marker(originCoords).addTo(map).bindPopup(`<b>Origin:</b> ${shipment.from}`);
                 L.marker(destCoords).addTo(map).bindPopup(`<b>Destination:</b> ${shipment.to}`);
 
-                // Draw route line connecting locations
                 const polyline = L.polyline([originCoords, destCoords], { color: 'var(--fedex-purple)', weight: 3, dashArray: '5, 10' }).addTo(map);
                 map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
 
-                // Custom Moving Icon
                 const cargoIcon = L.divIcon({
                     className: 'custom-cargo-icon',
                     html: '<div style="background:var(--fedex-orange); color:white; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);"><i class="fa-solid fa-plane" style="font-size:14px;"></i></div>',
@@ -1203,7 +1206,7 @@
                 return;
             }
             if (!shipmentDatabase[val]) {
-                shipmentDatabase[val] = { item: "International Parcel", from: "Lagos", to: "Accra" };
+                shipmentDatabase[val] = { item: "International Parcel", from: "New York", to: "Tokyo" };
             }
             openTrackingModal(val);
         });
