@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FedEx Delivery Portal</title>
+    <!-- Google Fonts & FontAwesome for icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Leaflet CSS for Map details -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        :root {
+            --fedex-purple: #4d148c;
+            --fedex-orange: #ff6600;
+            --fedex-dark: #111111;
+            --bg-color: #f4f6f9;
+            --card-bg: #ffffff;
+            --text-main: #333333;
+            --text-muted: #666666;
+            --border-color: #e5e7eb;
+            --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* App Container */
+        .app-container {
+            width: 100%;
+            max-width: 480px;
+            background-color: var(--card-bg);
+            border-radius: 24px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.08);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            animation: fadeIn 0.6s ease-out;
+            border: 1px solid rgba(0,0,0,0.04);
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Header */
+        header {
+            background: linear-gradient(135deg, var(--fedex-purple), #2d0b52);
+            color: white;
+            padding: 24px 20px 20px 20px;
+            position: relative;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 6px;
+        }
+
+        header h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+        }
+
+        header h1 span {
+            color: var(--fedex-orange);
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        header p {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.8);
+            font-weight: 300;
+        }
+
+        /* Navigation Tabs */
+        .nav-tabs {
+            display: flex;
+            gap: 10px;
+            padding: 16px 20px;
+            background-color: #faf5ff;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            border: none;
+            background: transparent;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab-btn.active {
+            background-color: var(--fedex-purple);
+            color: white;
+            box-shadow: 0 4px 12px rgba(77, 20, 140, 0.2);
+        }
+
+        /* Views Switching Visibility */
+        .app-view {
+            display: none;
+            padding: 20px;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .app-view.active-view {
+            display: flex;
+            animation: fadeInView 0.3s ease-in-out forwards;
+        }
+
+        @keyframes fadeInView {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Statistics Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+
+        .stat-card {
+            background: #fdfdfd;
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 12px 8px;
+            text-align: center;
+        }
+
+        .stat-card i {
+            font-size: 1rem;
+            color: var(--fedex-purple);
+            margin-bottom: 6px;
+        }
+
+        .stat-card .title {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .stat-card .value {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--text-main);
+            margin-bottom: 4px;
+        }
+
+        .trend {
+            font-size: 0.65rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2px;
+        }
+        .trend.up { color: #10b981; }
+        .trend.down { color: #ef4444; }
+
+        /* Track Section */
+        .track-section {
+            background: linear-gradient(145deg, #ffffff, #f9fafb);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 16px;
+        }
+
+        .track-section h3 {
+            font-size: 1rem;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .track-section p {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+        }
+
+        .track-input-group {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .track-input-group input {
+            flex: 1;
+            padding: 12px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            font-size: 0.85rem;
+            outline: none;
+            background: white;
+            transition: var(--transition-smooth);
+        }
+
+        .track-input-group input:focus {
+            border-color: var(--fedex-purple);
+            box-shadow: 0 0 0 3px rgba(77, 20, 140, 0.1);
+        }
+
+        .track-btn {
+            background-color: var(--fedex-orange);
+            color: white;
+            border: none;
+            padding: 0 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            white-space: nowrap;
+        }
+
+        .track-btn:hover {
+            background-color: #e65c00;
+            transform: scale(1.02);
+        }
+
+        /* Shipping Table Section */
+        .shipping-table-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .section-header h3 {
+            font-size: 1rem;
+            font-weight: 700;
+        }
+
+        .table-container {
+            border: 1px solid var(--border-color);
+            border-radius: 14px;
+            overflow: hidden;
+            background: white;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+            font-size: 0.85rem;
+        }
+
+        th {
+            background-color: #faf9fc;
+            color: var(--fedex-purple);
+            font-weight: 600;
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        td {
+            padding: 12px 14px;
+            border-bottom: 1px solid var(--border-color);
+            color: var(--text-main);
+        }
+
+        tbody tr {
+            cursor: pointer;
+            transition: var(--transition-smooth);
+        }
+
+        tbody tr:hover {
+            background-color: #f3e8ff;
+        }
+
+        .item-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-weight: 500;
+        }
+
+        .country-pill {
+            padding: 2px 8px;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            background: #eef2f6;
+            color: #4b5563;
+        }
+
+        /* Book Delivery Form Styling */
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--fedex-purple);
+            margin-bottom: 14px;
+            border-bottom: 2px solid #f0edf6;
+            padding-bottom: 6px;
+        }
+
+        .input-group {
+            margin-bottom: 12px;
+        }
+
+        .input-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 11px 14px;
+            border: 1.5px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: var(--text-main);
+            background-color: #fafafa;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        .input-group input:focus {
+            border-color: var(--fedex-purple);
+            background-color: #ffffff;
+            box-shadow: 0 0 0 3px rgba(77, 20, 140, 0.1);
+        }
+
+        .btn-submit {
+            width: 100%;
+            background-color: var(--fedex-orange);
+            color: white;
+            border: none;
+            padding: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: var(--transition-smooth);
+            margin-top: 6px;
+            box-shadow: 0 4px 12px rgba(255, 102, 0, 0.3);
+        }
+
+        .btn-submit:hover {
+            background-color: #e55b00;
+        }
+
+        .result-box {
+            background: #f8f6fc;
+            border: 1px solid #e2d9f3;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .result-box h3 {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .tracking-display {
+            display: flex;
+            align-items: center;
+            background: #ffffff;
+            border: 1.5px solid var(--fedex-purple);
+            border-radius: 8px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .tracking-display input {
+            flex: 1;
+            border: none;
+            padding: 10px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--fedex-purple);
+            background: transparent;
+            text-align: center;
+            outline: none;
+        }
+
+        .copy-btn {
+            background-color: var(--fedex-purple);
+            color: white;
+            border: none;
+            padding: 0 14px;
+            height: 100%;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .success-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: #e1f5fe;
+            color: #0288d1;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
+        /* Modal Overlay */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            opacity: 0;
+            pointer-events: none;
+            transition: var(--transition-smooth);
+            z-index: 1000;
+            padding: 15px;
+        }
+
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background: white;
+            width: 100%;
+            max-width: 440px;
+            border-radius: 20px;
+            padding: 20px;
+            transform: scale(0.9);
+            transition: var(--transition-smooth);
+            box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal.active .modal-content {
+            transform: scale(1);
+        }
+
+        .sketch-card {
+            border: 2px solid var(--fedex-purple);
+            border-radius: 12px;
+            padding: 14px;
+            background: #faf5ff;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .sketch-card-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .sketch-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--fedex-purple);
+        }
+
+        .status-pill {
+            background: var(--fedex-orange);
+            color: white;
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 3px 8px;
+            border-radius: 6px;
+            text-transform: uppercase;
+        }
+
+        .sketch-tracking-no {
+            font-size: 1rem;
+            font-weight: 800;
+            color: var(--text-main);
+        }
+
+        .sketch-info-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .sketch-info-row span {
+            color: var(--text-main);
+        }
+
+        .sketch-steps {
+            display: flex;
+            justify-content: space-between;
+            position: relative;
+            margin-top: 8px;
+            padding: 0 10px;
+        }
+
+        .sketch-steps::before {
+            content: '';
+            position: absolute;
+            top: 10px;
+            left: 30px;
+            right: 30px;
+            height: 2px;
+            background: var(--border-color);
+            z-index: 1;
+        }
+
+        .step-node {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .step-dot {
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.55rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .step-node.completed .step-dot,
+        .step-node.active .step-dot {
+            background: var(--fedex-purple);
+            border-color: var(--fedex-purple);
+            color: white;
+        }
+
+        .step-node.active .step-dot {
+            background: var(--fedex-orange);
+            border-color: var(--fedex-orange);
+        }
+
+        .step-label {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .step-node.active .step-label {
+            color: var(--fedex-orange);
+            font-weight: 700;
+        }
+
+        .map-box-container {
+            border: 2px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #map {
+            width: 100%;
+            height: 220px;
+            background: #e5e7eb;
+        }
+
+        .current-location-box {
+            background: white;
+            padding: 12px 14px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .current-location-text h5 {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .current-location-text p {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: var(--text-main);
+        }
+
+        .close-modal-btn {
+            background: #f3f4f6;
+            border: none;
+            padding: 10px;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            font-size: 0.85rem;
+        }
+
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--fedex-dark);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 30px;
+            font-size: 0.85rem;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            z-index: 2000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- Header -->
+        <header>
+            <div class="header-top">
+                <h1>FedEx <span>Delivery</span></h1>
+                <div class="user-avatar">JD</div>
+            </div>
+            <p>Here's what's happening with your shipping today</p>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" id="tabTrackBtn"><i class="fa-solid fa-box-open"></i> Track Goods</button>
+            <button class="tab-btn" id="tabBookBtn"><i class="fa-solid fa-truck-fast"></i> Book Delivery</button>
+        </div>
+
+        <!-- VIEW 1: Track Goods Dashboard -->
+        <div id="trackGoodsView" class="app-view active-view">
+            <!-- Statistics Row -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    <div class="title">Total Ship</div>
+                    <div class="value">5.2M</div>
+                    <div class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 19.2%</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fa-solid fa-circle-check"></i>
+                    <div class="title">Delivered</div>
+                    <div class="value">92,503</div>
+                    <div class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 16.0%</div>
+                </div>
+                <div class="stat-card">
+                    <i class="fa-solid fa-spinner"></i>
+                    <div class="title">In Transit</div>
+                    <div class="value">5</div>
+                    <div class="trend down"><i class="fa-solid fa-arrow-trend-down"></i> 1.7%</div>
+                </div>
+            </div>
+
+            <!-- Track Shipment Box -->
+            <div class="track-section">
+                <h3>Track Your Shipment</h3>
+                <p>Enter your tracking number to get real-time updates</p>
+                <div class="track-input-group">
+                    <input type="text" id="trackingInput" placeholder="e.g. FDX-20261024-8492" value="TG-70261005-762">
+                    <button class="track-btn" id="trackBtn">Track <i class="fa-solid fa-arrow-right"></i></button>
+                </div>
+            </div>
+
+            <!-- Today Shipping Table -->
+            <div class="shipping-table-section">
+                <div class="section-header">
+                    <h3>Today Shipping</h3>
+                </div>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Tracking No</th>
+                                <th>Item</th>
+                                <th>Destination</th>
+                            </tr>
+                        </thead>
+                        <tbody id="shipmentTableBody">
+                            <tr data-tracking="TG-70261005-762" data-item="Document" data-from="Lagos" data-to="Abuja">
+                                <td><strong>TG-70261005-762</strong></td>
+                                <td><span class="item-badge"><i class="fa-solid fa-file-lines" style="color:var(--fedex-purple);"></i> Document</span></td>
+                                <td><span class="country-pill">Abuja</span></td>
+                            </tr>
+                            <tr data-tracking="TG-2016109-782" data-item="Smartphone" data-from="Accra" data-to="Johannesburg">
+                                <td><strong>TG-2016109-782</strong></td>
+                                <td><span class="item-badge"><i class="fa-solid fa-mobile-screen" style="color:#eab308;"></i> Phone</span></td>
+                                <td><span class="country-pill">Johannesburg</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- VIEW 2: Book Delivery Form & Generation Portal -->
+        <div id="bookDeliveryView" class="app-view">
+            <!-- Form View Section -->
+            <div id="bookingFormSection">
+                <div class="section-title">Package Details</div>
+                <form id="deliveryForm" onsubmit="generateTracking(event)">
+                    <div class="input-group">
+                        <label for="fullName">Receiver Full Name</label>
+                        <input type="text" id="fullName" placeholder="e.g. John Doe" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="whatsapp">Receiver WhatsApp Number</label>
+                        <input type="tel" id="whatsapp" placeholder="e.g. +234 800 000 0000" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="address">Receiver Address</label>
+                        <input type="text" id="address" placeholder="e.g. 123 Main Street, City" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="item">Item to Deliver</label>
+                        <input type="text" id="item" placeholder="e.g. Laptop / Documents" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="pickup">Pick Up Location</label>
+                        <input type="text" id="pickup" placeholder="e.g. Lagos, Nigeria" required>
+                    </div>
+                    <div class="input-group">
+                        <label for="destination">Destination Location</label>
+                        <input type="text" id="destination" placeholder="e.g. Nairobi, Kenya" required>
+                    </div>
+                    <button type="submit" class="btn-submit">Generate Tracking Number</button>
+                </form>
+            </div>
+
+            <!-- Result View Section (Initially Hidden until generated) -->
+            <div id="bookingResultSection" style="display: none;">
+                <div class="result-box">
+                    <h3>Your New Tracking Number</h3>
+                    <div class="tracking-display">
+                        <input type="text" id="generatedTrackingNumber" readonly value="">
+                        <button class="copy-btn" onclick="copyTrackingNumber()">
+                            <i class="fa-regular fa-copy"></i> Copy
+                        </button>
+                    </div>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Guaranteed 48-hour delivery countdown started.</p>
+                    <div class="success-badge">
+                        <i class="fa-solid fa-circle-check"></i> Number generated successfully
+                    </div>
+                </div>
+                <button class="btn-submit" style="background-color: transparent; color: var(--fedex-purple); border: 1.5px solid var(--fedex-purple); margin-top: 15px; box-shadow: none;" onclick="resetBookingForm()">Create Another Shipment</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tracking Detail Modal Popup -->
+    <div class="modal" id="trackingModal">
+        <div class="modal-content">
+            <div class="sketch-card">
+                <div class="sketch-card-top">
+                    <span class="sketch-title">Shipping Tracking Result</span>
+                    <span class="status-pill" id="modalStatusPill">In Transit</span>
+                </div>
+                <div class="sketch-tracking-no" id="modalTrackingNo">TG-70261005-762</div>
+                
+                <div class="sketch-info-row">
+                    <div>Items: <span id="modalItemName">Document</span></div>
+                </div>
+                <div class="sketch-info-row">
+                    <div>From: <span id="modalFrom">Lagos</span></div>
+                    <div>To: <span id="modalTo">Abuja</span></div>
+                </div>
+
+                <div class="sketch-steps">
+                    <div class="step-node completed" id="stepPost">
+                        <div class="step-dot"><i class="fa-solid fa-check"></i></div>
+                        <div class="step-label">Post up</div>
+                    </div>
+                    <div class="step-node active" id="stepTransit">
+                        <div class="step-dot"><i class="fa-solid fa-plane"></i></div>
+                        <div class="step-label">48-Hr Transit</div>
+                    </div>
+                    <div class="step-node" id="stepDelivered">
+                        <div class="step-dot"></div>
+                        <div class="step-label">Delivered</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="map-box-container">
+                <div id="map"></div>
+                <div class="current-location-box">
+                    <i class="fa-solid fa-location-dot" style="color: var(--fedex-orange); font-size: 1.1rem;"></i>
+                    <div class="current-location-text">
+                        <h5>Current Location</h5>
+                        <p id="modalCurrentLocationText">Calculating route...</p>
+                    </div>
+                </div>
+            </div>
+
+            <button class="close-modal-btn" id="closeModal">Close</button>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toastNotification">
+        <i class="fa-solid fa-circle-check" style="color: #10b981;"></i>
+        <span id="toastText">Tracking status updated successfully!</span>
+    </div>
+
+    <!-- Leaflet JS for Map functionality -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Database storing generated bookings
+        const shipmentDatabase = {
+            "TG-70261005-762": { item: "Document", from: "Lagos", to: "Abuja" },
+            "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg" }
+        };
+
+        // African-focused & Global Coordinate Lookup
+        const cityCoordinates = {
+            // Nigeria & West Africa
+            "lagos": [6.5244, 3.3792],
+            "abuja": [9.0765, 7.3986],
+            "benin city": [6.3350, 5.6037],
+            "port harcourt": [4.8156, 7.0498],
+            "ibadan": [7.3775, 3.9470],
+            "accra": [5.6037, -0.1870],
+            "kumasi": [6.6885, -1.6244],
+            "dakar": [14.7167, -17.4677],
+            "abidjan": [5.3600, -4.0083],
+
+            // North & East Africa
+            "cairo": [30.0444, 31.2357],
+            "alexandria": [31.2001, 29.9187],
+            "casablanca": [33.5731, -7.5898],
+            "nairobi": [-1.2921, 36.8219],
+            "mombasa": [-4.0435, 39.6682],
+            "addis ababa": [9.0300, 38.7400],
+            "dar es salaam": [-6.7924, 39.2083],
+
+            // South & Central Africa
+            "johannesburg": [-26.2041, 28.0473],
+            "cape town": [-33.9249, 18.4241],
+            "durban": [-29.8587, 31.0218],
+            "luanda": [ -8.8390, 13.2894],
+
+            // Major Global Hubs
+            "london": [51.5074, -0.1278],
+            "paris": [48.8566, 2.3522],
+            "new york": [40.7128, -74.0060],
+            "tokyo": [35.6762, 139.6503],
+            "dubai": [25.2048, 55.2708]
+        };
+
+        // Tab elements
+        const tabTrackBtn = document.getElementById('tabTrackBtn');
+        const tabBookBtn = document.getElementById('tabBookBtn');
+        const trackGoodsView = document.getElementById('trackGoodsView');
+        const bookDeliveryView = document.getElementById('bookDeliveryView');
+
+        // Modal & Tracking elements
+        const trackBtn = document.getElementById('trackBtn');
+        const trackingInput = document.getElementById('trackingInput');
+        const modal = document.getElementById('trackingModal');
+        const closeModal = document.getElementById('closeModal');
+        const modalTrackingNo = document.getElementById('modalTrackingNo');
+        const modalItemName = document.getElementById('modalItemName');
+        const modalFrom = document.getElementById('modalFrom');
+        const modalTo = document.getElementById('modalTo');
+        const modalStatusPill = document.getElementById('modalStatusPill');
+        const modalCurrentLocationText = document.getElementById('modalCurrentLocationText');
+        const stepPost = document.getElementById('stepPost');
+        const stepTransit = document.getElementById('stepTransit');
+        const stepDelivered = document.getElementById('stepDelivered');
+        const tableRows = document.querySelectorAll('#shipmentTableBody tr');
+        const toast = document.getElementById('toastNotification');
+        const toastText = document.getElementById('toastText');
+
+        let map = null;
+        let movingMarker = null;
+        let worker = null;
+
+        function showToast(message) {
+            toastText.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Tab Switching Logic
+        tabTrackBtn.addEventListener('click', () => {
+            tabTrackBtn.classList.add('active');
+            tabBookBtn.classList.remove('active');
+            bookDeliveryView.classList.remove('active-view');
+            trackGoodsView.classList.add('active-view');
+            showToast('Loaded active shipments overview.');
+        });
+
+        tabBookBtn.addEventListener('click', () => {
+            tabBookBtn.classList.add('active');
+            tabTrackBtn.classList.remove('active');
+            trackGoodsView.classList.remove('active-view');
+            bookDeliveryView.classList.add('active-view');
+            showToast('Opened delivery booking portal.');
+        });
+
+        // Booking Form Handling & Unique Random Tracking Number Generator
+        function generateTracking(event) {
+            event.preventDefault();
+            const randomDigits = Math.floor(100000 + Math.random() * 900000);
+            const trackingNum = `FDX-2026-${randomDigits}`;
+            
+            const itemName = document.getElementById('item').value.trim();
+            const pickupLoc = document.getElementById('pickup').value.trim();
+            const destLoc = document.getElementById('destination').value.trim();
+
+            shipmentDatabase[trackingNum] = {
+                item: itemName,
+                from: pickupLoc,
+                to: destLoc
+            };
+
+            document.getElementById('generatedTrackingNumber').value = trackingNum;
+            document.getElementById('bookingFormSection').style.display = 'none';
+            document.getElementById('bookingResultSection').style.display = 'block';
+            showToast('Tracking number generated successfully!');
+        }
+
+        function copyTrackingNumber() {
+            const trackingInput = document.getElementById('generatedTrackingNumber');
+            trackingInput.select();
+            navigator.clipboard.writeText(trackingInput.value).then(() => {
+                showToast('Tracking number copied to clipboard!');
+            });
+        }
+
+        function resetBookingForm() {
+            document.getElementById('deliveryForm').reset();
+            document.getElementById('bookingResultSection').style.display = 'none';
+            document.getElementById('bookingFormSection').style.display = 'block';
+        }
+
+        // Dynamic Coordinate Resolver
+        function getCoordsForCity(cityName) {
+            const cleanName = cityName.toLowerCase().trim();
+            for (let key in cityCoordinates) {
+                if (cleanName.includes(key)) {
+                    return cityCoordinates[key];
+                }
+            }
+            let hash = 0;
+            for (let i = 0; i < cleanName.length; i++) {
+                hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            // Fallback coordinates bounded inside Africa if unknown
+            const lat = (Math.abs(hash) % 30) - 5;
+            const lng = ((hash >> 3) % 40) + 5;
+            return [lat, lng];
+        }
+
+        // Initialize Background Web Worker for continuous progress calculation
+        function initBackgroundWorker() {
+            const workerCode = `
+                let timers = {};
+                self.onmessage = function(e) {
+                    const { action, trackingNo, startTime } = e.data;
+                    if (action === 'start') {
+                        if (timers[trackingNo]) clearInterval(timers[trackingNo]);
+                        
+                        timers[trackingNo] = setInterval(() => {
+                            const now = Date.now();
+                            const elapsed = now - startTime;
+                            const totalDuration = 48 * 60 * 60 * 1000; // 48 hours
+                            let progress = elapsed / totalDuration;
+                            if (progress > 1) progress = 1;
+
+                            self.postMessage({ trackingNo, progress, elapsed });
+
+                            if (progress >= 1) {
+                                clearInterval(timers[trackingNo]);
+                                delete timers[trackingNo];
+                            }
+                        }, 1000);
+                    } else if (action === 'stop') {
+                        if (timers[trackingNo]) {
+                            clearInterval(timers[trackingNo]);
+                            delete timers[trackingNo];
+                        }
+                    }
+                };
+            `;
+            const blob = new Blob([workerCode], { type: 'application/javascript' });
+            worker = new Worker(URL.createObjectURL(blob));
+
+            worker.onmessage = function(e) {
+                const { trackingNo, progress, elapsed } = e.data;
+                
+                // Save progress in localStorage so it persists across page reloads/closes
+                localStorage.setItem(`shipment_${trackingNo}_progress`, progress);
+                localStorage.setItem(`shipment_${trackingNo}_elapsed`, elapsed);
+
+                // If modal is currently open for this tracking number, update live UI
+                if (modal.classList.contains('active') && modalTrackingNo.textContent === trackingNo) {
+                    updateModalUIFromProgress(trackingNo, progress, elapsed);
+                }
+            };
+        }
+        initBackgroundWorker();
+
+        function updateModalUIFromProgress(trackingNo, progress, elapsed) {
+            const shipment = shipmentDatabase[trackingNo];
+            const originCoords = getCoordsForCity(shipment.from);
+            const destCoords = getCoordsForCity(shipment.to);
+
+            const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * progress;
+            const currentLng = originCoords[1] + (destCoords[1] - originCoords[1]) * progress;
+
+            if (movingMarker && map) {
+                movingMarker.setLatLng([currentLat, currentLng]);
+            }
+
+            let totalSeconds = Math.floor(elapsed / 1000);
+            let hrs = Math.floor(totalSeconds / 3600);
+            let mins = Math.floor((totalSeconds % 3600) / 60);
+            let secs = totalSeconds % 60;
+            let timeString = `${hrs}h ${mins}m ${secs}s`;
+
+            if (progress < 1) {
+                modalCurrentLocationText.textContent = `In Transit (Time Elapsed: ${timeString} / 48h) — En route to ${shipment.to}`;
+            } else {
+                modalCurrentLocationText.textContent = `Delivered successfully to ${shipment.to}! (Total: 48h 0m)`;
+                modalStatusPill.textContent = "Delivered";
+                modalStatusPill.style.background = "#10b981";
+                stepTransit.className = "step-node completed";
+                stepTransit.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
+                stepDelivered.className = "step-node active";
+                stepDelivered.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
+            }
+        }
+
+        // Open Tracking Modal & Resume Progress
+        function openTrackingModal(trackingNo) {
+            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin City", to: "Destination City" };
+            
+            modalTrackingNo.textContent = trackingNo;
+            modalItemName.textContent = shipment.item;
+            modalFrom.textContent = shipment.from;
+            modalTo.textContent = shipment.to;
+            modal.classList.add('active');
+
+            // Initialize or retrieve start time from localStorage
+            let startTime = localStorage.getItem(`shipment_${trackingNo}_starttime`);
+            if (!startTime) {
+                startTime = Date.now();
+                localStorage.setItem(`shipment_${trackingNo}_starttime`, startTime);
+            } else {
+                startTime = parseInt(startTime, 10);
+            }
+
+            // Tell background worker to track this shipment
+            worker.postMessage({ action: 'start', trackingNo, startTime });
+
+            // Reset status indicators based on existing progress
+            let savedProgress = parseFloat(localStorage.getItem(`shipment_${trackingNo}_progress`) || "0");
+            let savedElapsed = parseInt(localStorage.getItem(`shipment_${trackingNo}_elapsed`) || "0", 10);
+
+            if (savedProgress >= 1) {
+                modalStatusPill.textContent = "Delivered";
+                modalStatusPill.style.background = "#10b981";
+                stepTransit.className = "step-node completed";
+                stepTransit.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
+                stepDelivered.className = "step-node active";
+                stepDelivered.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
+            } else {
+                modalStatusPill.textContent = "In Transit";
+                modalStatusPill.style.background = "var(--fedex-orange)";
+                stepPost.className = "step-node completed";
+                stepTransit.className = "step-node active";
+                stepDelivered.className = "step-node";
+            }
+
+            setTimeout(() => {
+                const originCoords = getCoordsForCity(shipment.from);
+                const destCoords = getCoordsForCity(shipment.to);
+
+                if (!map) {
+                    // Center map over Africa by default (approx center: [7.3, 20.0], zoom level 3)
+                    map = L.map('map').setView([7.3, 20.0], 3);
+                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                        maxZoom: 18,
+                        attribution: '© OpenStreetMap'
+                    }).addTo(map);
+                } else {
+                    map.setView([7.3, 20.0], 3);
+                    map.invalidateSize();
+                }
+
+                // Clear previous layers except tile layer
+                map.eachLayer((layer) => {
+                    if (!layer._url) {
+                        map.removeLayer(layer);
+                    }
+                });
+
+                // Add Origin and Destination markers dynamically
+                L.marker(originCoords).addTo(map).bindPopup(`<b>Origin:</b> ${shipment.from}`);
+                L.marker(destCoords).addTo(map).bindPopup(`<b>Destination:</b> ${shipment.to}`);
+
+                // Draw route line connecting locations
+                const polyline = L.polyline([originCoords, destCoords], { color: 'var(--fedex-purple)', weight: 3, dashArray: '5, 10' }).addTo(map);
+                map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
+
+                // Custom Moving Icon
+                const cargoIcon = L.divIcon({
+                    className: 'custom-cargo-icon',
+                    html: '<div style="background:var(--fedex-orange); color:white; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);"><i class="fa-solid fa-plane" style="font-size:14px;"></i></div>',
+                    iconSize: [32, 32],
+                    iconAnchor: [16, 16]
+                });
+
+                const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * savedProgress;
+                const currentLng = originCoords[1] + (destCoords[1] - originCoords[1]) * savedProgress;
+                movingMarker = L.marker([currentLat, currentLng], { icon: cargoIcon }).addTo(map);
+
+                updateModalUIFromProgress(trackingNo, savedProgress, savedElapsed);
+            }, 250);
+        }
+
+        trackBtn.addEventListener('click', () => {
+            const val = trackingInput.value.trim();
+            if (val === '') {
+                showToast('Please enter a valid tracking number.');
+                return;
+            }
+            if (!shipmentDatabase[val]) {
+                shipmentDatabase[val] = { item: "International Parcel", from: "Lagos", to: "Accra" };
+            }
+            openTrackingModal(val);
+        });
+
+        tableRows.forEach(row => {
+            row.addEventListener('click', () => {
+                const trackingNo = row.getAttribute('data-tracking');
+                trackingInput.value = trackingNo;
+                openTrackingModal(trackingNo);
+            });
+        });
+
+        closeModal.addEventListener('click', () => {
+            modal.classList.remove('active');
+        });
+
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                modal.classList.remove('active');
+            }
+        });
+    </script>
+</body>
+</html>
