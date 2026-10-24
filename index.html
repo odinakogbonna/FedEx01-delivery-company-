@@ -279,6 +279,8 @@
             border-radius: 14px;
             overflow: hidden;
             background: white;
+            max-height: 180px;
+            overflow-y: auto;
         }
 
         table {
@@ -296,6 +298,9 @@
             border-bottom: 1px solid var(--border-color);
             font-size: 0.75rem;
             text-transform: uppercase;
+            position: sticky;
+            top: 0;
+            z-index: 2;
         }
 
         td {
@@ -627,6 +632,17 @@
             background: #e5e7eb;
         }
 
+        /* Live pulsating animation for map cargo plane */
+        @keyframes pulsePlane {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.7); }
+            70% { transform: scale(1.15); box-shadow: 0 0 0 10px rgba(255, 102, 0, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
+        }
+
+        .animated-cargo-icon {
+            animation: pulsePlane 2s infinite;
+        }
+
         .current-location-box {
             background: white;
             padding: 12px 14px;
@@ -721,7 +737,7 @@
                 <div class="stat-card">
                     <i class="fa-solid fa-spinner"></i>
                     <div class="title">In Transit</div>
-                    <div class="value">5</div>
+                    <div class="value" id="inTransitCount">5</div>
                     <div class="trend down"><i class="fa-solid fa-arrow-trend-down"></i> 1.7%</div>
                 </div>
             </div>
@@ -739,7 +755,7 @@
             <!-- Today Shipping Table -->
             <div class="shipping-table-section">
                 <div class="section-header">
-                    <h3>Today Shipping</h3>
+                    <h3>Today Shipping & Generated Deliveries</h3>
                 </div>
                 <div class="table-container">
                     <table>
@@ -751,16 +767,7 @@
                             </tr>
                         </thead>
                         <tbody id="shipmentTableBody">
-                            <tr data-tracking="TG-70261005-762" data-item="Document" data-from="Lagos" data-to="London">
-                                <td><strong>TG-70261005-762</strong></td>
-                                <td><span class="item-badge"><i class="fa-solid fa-file-lines" style="color:var(--fedex-purple);"></i> Document</span></td>
-                                <td><span class="country-pill">London</span></td>
-                            </tr>
-                            <tr data-tracking="TG-2016109-782" data-item="Smartphone" data-from="Tokyo" data-to="São Paulo">
-                                <td><strong>TG-2016109-782</strong></td>
-                                <td><span class="item-badge"><i class="fa-solid fa-mobile-screen" style="color:#eab308;"></i> Phone</span></td>
-                                <td><span class="country-pill">São Paulo</span></td>
-                            </tr>
+                            <!-- Populated dynamically from shipmentDatabase / localStorage -->
                         </tbody>
                     </table>
                 </div>
@@ -790,12 +797,12 @@
                         <input type="text" id="item" placeholder="e.g. Laptop / Documents" required>
                     </div>
                     <div class="input-group">
-                        <label for="pickup">Pick Up Location</label>
-                        <input type="text" id="pickup" placeholder="e.g. New York, USA / Lagos" required>
+                        <label for="pickup">Pick Up Location (Continent / Country / City)</label>
+                        <input type="text" id="pickup" placeholder="e.g. Lagos, Nigeria or New York" required>
                     </div>
                     <div class="input-group">
-                        <label for="destination">Destination Location</label>
-                        <input type="text" id="destination" placeholder="e.g. Tokyo, Japan / Paris" required>
+                        <label for="destination">Destination Location (Continent / Country / City)</label>
+                        <input type="text" id="destination" placeholder="e.g. Tokyo, Japan or London" required>
                     </div>
                     <button type="submit" class="btn-submit">Generate Tracking Number</button>
                 </form>
@@ -879,8 +886,8 @@
     <!-- Leaflet JS for Map functionality -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Database storing generated bookings
-        const shipmentDatabase = {
+        // Database storing generated bookings, synchronized with localStorage for persistence across refreshes
+        let shipmentDatabase = JSON.parse(localStorage.getItem('fedex_shipment_database')) || {
             "TG-70261005-762": { item: "Document", from: "Lagos", to: "London" },
             "TG-2016109-782": { item: "Smartphone", from: "Tokyo", to: "São Paulo" }
         };
@@ -933,6 +940,28 @@
             "santiago": [-33.4489, -70.6693]
         };
 
+        // Populate table on load
+        function renderShipmentTable() {
+            const tbody = document.getElementById('shipmentTableBody');
+            tbody.innerHTML = '';
+            for (let trackingNo in shipmentDatabase) {
+                const s = shipmentDatabase[trackingNo];
+                const tr = document.createElement('tr');
+                tr.setAttribute('data-tracking', trackingNo);
+                tr.innerHTML = `
+                    <td><strong>${trackingNo}</strong></td>
+                    <td><span class="item-badge"><i class="fa-solid fa-box" style="color:var(--fedex-purple);"></i> ${s.item}</span></td>
+                    <td><span class="country-pill">${s.to}</span></td>
+                `;
+                tr.addEventListener('click', () => {
+                    trackingInput.value = trackingNo;
+                    openTrackingModal(trackingNo);
+                });
+                tbody.appendChild(tr);
+            }
+        }
+        renderShipmentTable();
+
         // Tab elements
         const tabTrackBtn = document.getElementById('tabTrackBtn');
         const tabBookBtn = document.getElementById('tabBookBtn');
@@ -953,7 +982,6 @@
         const stepPost = document.getElementById('stepPost');
         const stepTransit = document.getElementById('stepTransit');
         const stepDelivered = document.getElementById('stepDelivered');
-        const tableRows = document.querySelectorAll('#shipmentTableBody tr');
         const toast = document.getElementById('toastNotification');
         const toastText = document.getElementById('toastText');
 
@@ -969,7 +997,6 @@
             }, 3000);
         }
 
-        // Tab Switching Logic
         tabTrackBtn.addEventListener('click', () => {
             tabTrackBtn.classList.add('active');
             tabBookBtn.classList.remove('active');
@@ -986,7 +1013,7 @@
             showToast('Opened delivery booking portal.');
         });
 
-        // Booking Form Handling & Unique Random Tracking Number Generator
+        // Booking Form Handling & Unique Tracking Number Generation with Persistent Memory
         function generateTracking(event) {
             event.preventDefault();
             const randomDigits = Math.floor(100000 + Math.random() * 900000);
@@ -1001,11 +1028,17 @@
                 from: pickupLoc,
                 to: destLoc
             };
+            localStorage.setItem('fedex_shipment_database', JSON.stringify(shipmentDatabase));
+
+            // Initialize start time for the new background timer
+            localStorage.setItem(`shipment_${trackingNum}_starttime`, Date.now());
+
+            renderShipmentTable();
 
             document.getElementById('generatedTrackingNumber').value = trackingNum;
             document.getElementById('bookingFormSection').style.display = 'none';
             document.getElementById('bookingResultSection').style.display = 'block';
-            showToast('Tracking number generated successfully!');
+            showToast('Tracking number generated & saved successfully!');
         }
 
         function copyTrackingNumber() {
@@ -1039,7 +1072,7 @@
             return [lat, lng];
         }
 
-        // Initialize Background Web Worker for continuous progress calculation across sessions
+        // Initialize Background Web Worker for continuous multi-continent transit calculation
         function initBackgroundWorker() {
             const workerCode = `
                 let timers = {};
@@ -1062,11 +1095,6 @@
                                 delete timers[trackingNo];
                             }
                         }, 1000);
-                    } else if (action === 'stop') {
-                        if (timers[trackingNo]) {
-                            clearInterval(timers[trackingNo]);
-                            delete timers[trackingNo];
-                        }
                     }
                 };
             `;
@@ -1076,7 +1104,6 @@
             worker.onmessage = function(e) {
                 const { trackingNo, progress, elapsed } = e.data;
                 
-                // Save progress in localStorage so it persists even if the browser/tab is closed
                 localStorage.setItem(`shipment_${trackingNo}_progress`, progress);
                 localStorage.setItem(`shipment_${trackingNo}_elapsed`, elapsed);
 
@@ -1089,6 +1116,8 @@
 
         function updateModalUIFromProgress(trackingNo, progress, elapsed) {
             const shipment = shipmentDatabase[trackingNo];
+            if (!shipment) return;
+
             const originCoords = getCoordsForCity(shipment.from);
             const destCoords = getCoordsForCity(shipment.to);
 
@@ -1120,7 +1149,11 @@
 
         // Open Tracking Modal & Resume Progress
         function openTrackingModal(trackingNo) {
-            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin City", to: "Destination City" };
+            const shipment = shipmentDatabase[trackingNo];
+            if (!shipment) {
+                showToast('Tracking number not found in system memory.');
+                return;
+            }
             
             modalTrackingNo.textContent = trackingNo;
             modalItemName.textContent = shipment.item;
@@ -1161,7 +1194,7 @@
                 const destCoords = getCoordsForCity(shipment.to);
 
                 if (!map) {
-                    // Global view zoom level showing all continents
+                    // Global view showing all continents (Asia, Europe, Americas, Africa)
                     map = L.map('map').setView([20, 0], 2);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 18,
@@ -1184,11 +1217,12 @@
                 const polyline = L.polyline([originCoords, destCoords], { color: 'var(--fedex-purple)', weight: 3, dashArray: '5, 10' }).addTo(map);
                 map.fitBounds(polyline.getBounds(), { padding: [30, 30] });
 
+                // Animated Pulsing Plane Icon
                 const cargoIcon = L.divIcon({
-                    className: 'custom-cargo-icon',
-                    html: '<div style="background:var(--fedex-orange); color:white; width:32px; height:32px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);"><i class="fa-solid fa-plane" style="font-size:14px;"></i></div>',
-                    iconSize: [32, 32],
-                    iconAnchor: [16, 16]
+                    className: 'animated-cargo-icon',
+                    html: '<div style="background:var(--fedex-orange); color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(255,102,0,0.5);"><i class="fa-solid fa-plane" style="font-size:15px;"></i></div>',
+                    iconSize: [34, 34],
+                    iconAnchor: [17, 17]
                 });
 
                 const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * savedProgress;
@@ -1206,17 +1240,10 @@
                 return;
             }
             if (!shipmentDatabase[val]) {
-                shipmentDatabase[val] = { item: "International Parcel", from: "New York", to: "Tokyo" };
+                showToast('Tracking number not found. Try generating one in Book Delivery.');
+                return;
             }
             openTrackingModal(val);
-        });
-
-        tableRows.forEach(row => {
-            row.addEventListener('click', () => {
-                const trackingNo = row.getAttribute('data-tracking');
-                trackingInput.value = trackingNo;
-                openTrackingModal(trackingNo);
-            });
         });
 
         closeModal.addEventListener('click', () => {
