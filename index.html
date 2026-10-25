@@ -632,15 +632,15 @@
             background: #e5e7eb;
         }
 
-        /* Pulsing Map Animation for Delivery Vehicle Icon */
-        @keyframes pulseVehicle {
+        /* Pulsing Map Animation matching reference image style */
+        @keyframes pulseIcon {
             0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 102, 0, 0.7); }
             70% { transform: scale(1.18); box-shadow: 0 0 0 12px rgba(255, 102, 0, 0); }
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(255, 102, 0, 0); }
         }
 
         .animated-delivery-icon {
-            animation: pulseVehicle 2s infinite;
+            animation: pulseIcon 2s infinite;
         }
 
         .current-location-box {
@@ -747,7 +747,7 @@
                 <h3>Track Your Shipment</h3>
                 <p>Enter your tracking number to get real-time updates</p>
                 <div class="track-input-group">
-                    <input type="text" id="trackingInput" placeholder="e.g. FDX-RIVER-8492" value="TG-70261005-762">
+                    <input type="text" id="trackingInput" placeholder="e.g. FDX-REF-8492" value="TG-70261005-762">
                     <button class="track-btn" id="trackBtn">Track <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
             </div>
@@ -852,7 +852,7 @@
                         <div class="step-label">Post up</div>
                     </div>
                     <div class="step-node active" id="stepTransit">
-                        <div class="step-dot"><i class="fa-solid fa-truck-fast"></i></div>
+                        <div class="step-dot"><i class="fa-solid fa-plane"></i></div>
                         <div class="step-label">In Transit</div>
                     </div>
                     <div class="step-node" id="stepDelivered">
@@ -1025,7 +1025,7 @@
         function generateTracking(event) {
             event.preventDefault();
             const randomDigits = Math.floor(100000 + Math.random() * 900000);
-            const trackingNum = `FDX-ROUTE-${randomDigits}`;
+            const trackingNum = `FDX-REF-${randomDigits}`;
             
             const itemName = document.getElementById('item').value.trim();
             const pickupLoc = document.getElementById('pickup').value.trim();
@@ -1101,7 +1101,7 @@
 
                             if (progress >= 1) {
                                 clearInterval(timers[trackingNo]);
-                                delete timers[trackingNo];
+                                delete timers[timers];
                             }
                         }, 1000);
                     }
@@ -1130,7 +1130,7 @@
             const originCoords = getCoordsForCity(shipment.from);
             const destCoords = getCoordsForCity(shipment.to);
 
-            // Interpolate position directly between origin and destination leading to 'to'
+            // Interpolate position directly between origin and destination heading toward 'to'
             const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * progress;
             const currentLng = originCoords[1] + (destCoords[1] - originCoords[1]) * progress;
 
@@ -1153,7 +1153,7 @@
                 } else if (isNearDestination) {
                     modalCurrentLocationText.textContent = `Delivery at ${shipment.to} border (Final clearance) — Time: ${timeString}`;
                 } else {
-                    modalCurrentLocationText.textContent = `In Transit on route from ${shipment.from} heading to ${shipment.to} (Elapsed: ${timeString})`;
+                    modalCurrentLocationText.textContent = `In Transit heading from ${shipment.from} to ${shipment.to} (Elapsed: ${timeString})`;
                 }
             } else {
                 modalCurrentLocationText.textContent = `Delivery at ${shipment.to} border completed successfully!`;
@@ -1234,20 +1234,20 @@
                     }
                 });
 
-                // Origin and Destination Markers
+                // Origin and Destination Markers matching reference layout
                 L.marker(originCoords).addTo(map).bindPopup(`<b>Sender (From):</b> ${shipment.from}`);
                 L.marker(destCoords).addTo(map).bindPopup(`<b>Destination (To):</b> ${shipment.to}`);
 
-                // Dashed purple line connecting From -> To
+                // Dashed purple line matching reference image style
                 const polyline = L.polyline([originCoords, destCoords], { color: '#4d148c', weight: 3, dashArray: '8, 12' }).addTo(map);
                 map.fitBounds(polyline.getBounds(), { padding: [40, 40] });
 
-                // Delivery vehicle icon positioned precisely on the line heading toward 'to'
+                // Delivery Icon in Orange Circle matching reference image style
                 const vehicleIcon = L.divIcon({
                     className: 'animated-delivery-icon',
-                    html: '<div style="background:#ff6600; color:white; width:34px; height:34px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,0.3);"><i class="fa-solid fa-truck-fast" style="font-size:14px;"></i></div>',
-                    iconSize: [34, 34],
-                    iconAnchor: [17, 17]
+                    html: '<div style="background:#ff6600; color:white; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 12px rgba(0,0,0,0.3);"><i class="fa-solid fa-plane" style="font-size:15px;"></i></div>',
+                    iconSize: [36, 36],
+                    iconAnchor: [18, 18]
                 });
 
                 const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * savedProgress;
