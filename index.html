@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -878,43 +879,22 @@
 
     <!-- Leaflet JS for Map functionality -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    
-    <!-- Unified Application Logic & Firebase Configuration Script -->
-    <script type="module">
-        // Import the functions you need from the SDKs you need
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-app.js";
-        import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-analytics.js";
-
-        // Your web app's Firebase configuration
-        const firebaseConfig = {
-            apiKey: "AIzaSyCBpxKPAsIzAMZ1-zDJa4JQNuoiq5yCkQw",
-            authDomain: "fedex-3bfe6.firebaseapp.com",
-            databaseURL: "https://fedex-3bfe6-default-rtdb.firebaseio.com",
-            projectId: "fedex-3bfe6",
-            storageBucket: "fedex-3bfe6.firebasestorage.app",
-            messagingSenderId: "264567370913",
-            appId: "1:264567370913:web:9267df43ca67bf7a526ce0",
-            measurementId: "G-SWP0X83QB8"
-        };
-
-        // Initialize Firebase modular analytics
-        const app = initializeApp(firebaseConfig);
-        const analytics = getAnalytics(app);
-    </script>
-
     <script>
-        // Use compat SDK database reference synchronized with config credentials
-        const compatFirebaseConfig = {
-            apiKey: "AIzaSyCBpxKPAsIzAMZ1-zDJa4JQNuoiq5yCkQw",
-            authDomain: "fedex-3bfe6.firebaseapp.com",
-            databaseURL: "https://fedex-3bfe6-default-rtdb.firebaseio.com",
-            projectId: "fedex-3bfe6",
-            storageBucket: "fedex-3bfe6.firebasestorage.app",
-            messagingSenderId: "264567370913",
-            appId: "1:264567370913:web:9267df43ca67bf7a526ce0"
+        // -------------------------------------------------------------
+        // TODO: Replace with your own free Firebase Project Configuration
+        // -------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        firebase.initializeApp(compatFirebaseConfig);
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
         const db = firebase.database();
         const shipmentsRef = db.ref('shipments');
 
@@ -958,6 +938,7 @@
             if (data) {
                 shipmentDatabase = data;
             } else {
+                // If database is empty, seed defaults
                 shipmentsRef.set(shipmentDatabase);
             }
             renderShipmentTable();
@@ -1036,7 +1017,7 @@
         });
 
         // Booking Form Handling & Cloud Sync Generation
-        window.generateTracking = function(event) {
+        function generateTracking(event) {
             event.preventDefault();
             const randomDigits = Math.floor(100000 + Math.random() * 900000);
             const trackingNum = `FDX-2026-${randomDigits}`;
@@ -1052,6 +1033,7 @@
                 startTime: Date.now()
             };
 
+            // Save to Firebase Cloud Database (Syncs to all devices instantly)
             db.ref('shipments/' + trackingNum).set(newShipment);
 
             document.getElementById('generatedTrackingNumber').value = trackingNum;
@@ -1060,7 +1042,7 @@
             showToast('Tracking saved to Cloud across all devices!');
         }
 
-        window.copyTrackingNumber = function() {
+        function copyTrackingNumber() {
             const trackingInput = document.getElementById('generatedTrackingNumber');
             trackingInput.select();
             navigator.clipboard.writeText(trackingInput.value).then(() => {
@@ -1068,7 +1050,7 @@
             });
         }
 
-        window.resetBookingForm = function() {
+        function resetBookingForm() {
             document.getElementById('deliveryForm').reset();
             document.getElementById('bookingResultSection').style.display = 'none';
             document.getElementById('bookingFormSection').style.display = 'block';
@@ -1195,6 +1177,7 @@
                 return;
             }
             if (!shipmentDatabase[val]) {
+                // Automatically create and sync to cloud if not found
                 const newShipment = { item: "International Parcel", from: "Lagos", to: "Accra", startTime: Date.now() };
                 db.ref('shipments/' + val).set(newShipment);
             }
