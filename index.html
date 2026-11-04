@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>FedEx Delivery Portal</title>
+    <title>FedEx Delivery Portal - Cross-Device Sync</title>
     <!-- Google Fonts & FontAwesome for icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -698,7 +698,7 @@
                 <h1>FedEx <span>Delivery</span></h1>
                 <div class="user-avatar">JD</div>
             </div>
-            <p>Here's what's happening with your shipping today</p>
+            <p>Real-time cross-device tracking active</p>
         </header>
 
         <!-- Navigation Tabs -->
@@ -734,9 +734,9 @@
             <!-- Track Shipment Box -->
             <div class="track-section">
                 <h3>Track Your Shipment</h3>
-                <p>Enter your tracking number to get real-time updates</p>
+                <p>Enter your tracking number to get real-time cloud updates</p>
                 <div class="track-input-group">
-                    <input type="text" id="trackingInput" placeholder="e.g. FDX-20261024-8492" value="TG-70261005-762">
+                    <input type="text" id="trackingInput" placeholder="e.g. FDX-2026-123456" value="TG-70261005-762">
                     <button class="track-btn" id="trackBtn">Track <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
             </div>
@@ -744,7 +744,7 @@
             <!-- Today Shipping Table -->
             <div class="shipping-table-section">
                 <div class="section-header">
-                    <h3>All Shipments & History</h3>
+                    <h3>All Cloud Sync Shipments</h3>
                 </div>
                 <div class="table-container">
                     <table>
@@ -756,7 +756,7 @@
                             </tr>
                         </thead>
                         <tbody id="shipmentTableBody">
-                            <!-- Populated dynamically from storage -->
+                            <!-- Populated dynamically from Firebase Cloud -->
                         </tbody>
                     </table>
                 </div>
@@ -797,7 +797,7 @@
                 </form>
             </div>
 
-            <!-- Result View Section (Initially Hidden until generated) -->
+            <!-- Result View Section -->
             <div id="bookingResultSection" style="display: none;">
                 <div class="result-box">
                     <h3>Your New Tracking Number</h3>
@@ -807,9 +807,9 @@
                             <i class="fa-regular fa-copy"></i> Copy
                         </button>
                     </div>
-                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Guaranteed 48-hour delivery countdown started.</p>
+                    <p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 12px;">Synced across all your phones and browsers.</p>
                     <div class="success-badge">
-                        <i class="fa-solid fa-circle-check"></i> Number generated successfully
+                        <i class="fa-solid fa-circle-check"></i> Saved to Cloud Database
                     </div>
                 </div>
                 <button class="btn-submit" style="background-color: transparent; color: var(--fedex-purple); border: 1.5px solid var(--fedex-purple); margin-top: 15px; box-shadow: none;" onclick="resetBookingForm()">Create Another Shipment</button>
@@ -872,23 +872,35 @@
         <span id="toastText">Tracking status updated successfully!</span>
     </div>
 
+    <!-- Firebase SDKs -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+
     <!-- Leaflet JS for Map functionality -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // Permanent Storage Initialization for shipmentDatabase
-        const STORAGE_KEY = "fedex_shipment_database_v1";
-
-        let defaultShipments = {
-            "TG-70261005-762": { item: "Document", from: "Lagos", to: "Abuja" },
-            "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg" }
+        // -------------------------------------------------------------
+        // TODO: Replace with your own free Firebase Project Configuration
+        // -------------------------------------------------------------
+        const firebaseConfig = {
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
-        // Load database from localStorage or initialize with defaults
-        let shipmentDatabase = JSON.parse(localStorage.getItem(STORAGE_KEY));
-        if (!shipmentDatabase) {
-            shipmentDatabase = defaultShipments;
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(shipmentDatabase));
-        }
+        // Initialize Firebase
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const shipmentsRef = db.ref('shipments');
+
+        let shipmentDatabase = {
+            "TG-70261005-762": { item: "Document", from: "Lagos", to: "Abuja", startTime: Date.now() - 3600000 },
+            "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg", startTime: Date.now() - 7200000 }
+        };
 
         // African-focused & Global Coordinate Lookup
         const cityCoordinates = {
@@ -919,6 +931,18 @@
             "dubai": [25.2048, 55.2708]
         };
 
+        // Listen for real-time cloud changes across all devices & browsers
+        shipmentsRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                shipmentDatabase = data;
+            } else {
+                // If database is empty, seed defaults
+                shipmentsRef.set(shipmentDatabase);
+            }
+            renderShipmentTable();
+        });
+
         // Render shipments in the table dynamically
         function renderShipmentTable() {
             const tableBody = document.getElementById('shipmentTableBody');
@@ -926,11 +950,6 @@
             
             for (const [trackingNo, data] of Object.entries(shipmentDatabase)) {
                 const tr = document.createElement('tr');
-                tr.setAttribute('data-tracking', trackingNo);
-                tr.setAttribute('data-item', data.item);
-                tr.setAttribute('data-from', data.from);
-                tr.setAttribute('data-to', data.to);
-
                 tr.innerHTML = `
                     <td><strong>${trackingNo}</strong></td>
                     <td><span class="item-badge"><i class="fa-solid fa-box" style="color:var(--fedex-purple);"></i> ${data.item}</span></td>
@@ -971,7 +990,7 @@
 
         let map = null;
         let movingMarker = null;
-        let worker = null;
+        let timerInterval = null;
 
         function showToast(message) {
             toastText.textContent = message;
@@ -987,7 +1006,6 @@
             tabBookBtn.classList.remove('active');
             bookDeliveryView.classList.remove('active-view');
             trackGoodsView.classList.add('active-view');
-            renderShipmentTable();
         });
 
         tabBookBtn.addEventListener('click', () => {
@@ -997,7 +1015,7 @@
             bookDeliveryView.classList.add('active-view');
         });
 
-        // Booking Form Handling & Unique Random Tracking Number Generation
+        // Booking Form Handling & Cloud Sync Generation
         function generateTracking(event) {
             event.preventDefault();
             const randomDigits = Math.floor(100000 + Math.random() * 900000);
@@ -1007,25 +1025,20 @@
             const pickupLoc = document.getElementById('pickup').value.trim();
             const destLoc = document.getElementById('destination').value.trim();
 
-            // Store in database and update localStorage so ANY device/browser sees it
-            shipmentDatabase[trackingNum] = {
+            const newShipment = {
                 item: itemName,
                 from: pickupLoc,
-                to: destLoc
+                to: destLoc,
+                startTime: Date.now()
             };
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(shipmentDatabase));
 
-            // Initialize countdown start time immediately for this number
-            localStorage.setItem(`shipment_${trackingNum}_starttime`, Date.now());
-            localStorage.setItem(`shipment_${trackingNum}_progress`, "0");
-            localStorage.setItem(`shipment_${trackingNum}_elapsed`, "0");
-
-            renderShipmentTable();
+            // Save to Firebase Cloud Database (Syncs to all devices instantly)
+            db.ref('shipments/' + trackingNum).set(newShipment);
 
             document.getElementById('generatedTrackingNumber').value = trackingNum;
             document.getElementById('bookingFormSection').style.display = 'none';
             document.getElementById('bookingResultSection').style.display = 'block';
-            showToast('Tracking number generated & saved across devices!');
+            showToast('Tracking saved to Cloud across all devices!');
         }
 
         function copyTrackingNumber() {
@@ -1059,53 +1072,6 @@
             return [lat, lng];
         }
 
-        // Initialize Background Web Worker for continuous progress calculation
-        function initBackgroundWorker() {
-            const workerCode = `
-                let timers = {};
-                self.onmessage = function(e) {
-                    const { action, trackingNo, startTime } = e.data;
-                    if (action === 'start') {
-                        if (timers[trackingNo]) clearInterval(timers[trackingNo]);
-                        
-                        timers[trackingNo] = setInterval(() => {
-                            const now = Date.now();
-                            const elapsed = now - startTime;
-                            const totalDuration = 48 * 60 * 60 * 1000; // 48 hours
-                            let progress = elapsed / totalDuration;
-                            if (progress > 1) progress = 1;
-
-                            self.postMessage({ trackingNo, progress, elapsed });
-
-                            if (progress >= 1) {
-                                clearInterval(timers[trackingNo]);
-                                delete timers[trackingNo];
-                            }
-                        }, 1000);
-                    } else if (action === 'stop') {
-                        if (timers[trackingNo]) {
-                            clearInterval(timers[trackingNo]);
-                            delete timers[trackingNo];
-                        }
-                    }
-                };
-            `;
-            const blob = new Blob([workerCode], { type: 'application/javascript' });
-            worker = new Worker(URL.createObjectURL(blob));
-
-            worker.onmessage = function(e) {
-                const { trackingNo, progress, elapsed } = e.data;
-                
-                localStorage.setItem(`shipment_${trackingNo}_progress`, progress);
-                localStorage.setItem(`shipment_${trackingNo}_elapsed`, elapsed);
-
-                if (modal.classList.contains('active') && modalTrackingNo.textContent === trackingNo) {
-                    updateModalUIFromProgress(trackingNo, progress, elapsed);
-                }
-            };
-        }
-        initBackgroundWorker();
-
         function updateModalUIFromProgress(trackingNo, progress, elapsed) {
             const shipment = shipmentDatabase[trackingNo];
             if (!shipment) return;
@@ -1129,7 +1095,7 @@
             if (progress < 1) {
                 modalCurrentLocationText.textContent = `In Transit (Time Elapsed: ${timeString} / 48h) — En route to ${shipment.to}`;
             } else {
-                modalCurrentLocationText.textContent = `Delivered successfully to ${shipment.to}! (Total: 48h 0m)`;
+                modalCurrentLocationText.textContent = `Delivered successfully to ${shipment.to}!`;
                 modalStatusPill.textContent = "Delivered";
                 modalStatusPill.style.background = "#10b981";
                 stepTransit.className = "step-node completed";
@@ -1139,10 +1105,9 @@
             }
         }
 
-        // Open Tracking Modal & Resume Progress
+        // Open Tracking Modal & Calculate Universal 48-hour transit progress
         function openTrackingModal(trackingNo) {
-            // Retrieve details from persistent database
-            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin City", to: "Destination City" };
+            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin", to: "Destination", startTime: Date.now() };
             
             modalTrackingNo.textContent = trackingNo;
             modalItemName.textContent = shipment.item;
@@ -1150,33 +1115,21 @@
             modalTo.textContent = shipment.to;
             modal.classList.add('active');
 
-            let startTime = localStorage.getItem(`shipment_${trackingNo}_starttime`);
-            if (!startTime) {
-                startTime = Date.now();
-                localStorage.setItem(`shipment_${trackingNo}_starttime`, startTime);
-            } else {
-                startTime = parseInt(startTime, 10);
+            if (timerInterval) clearInterval(timerInterval);
+
+            const startTime = shipment.startTime || Date.now();
+            const totalDuration = 48 * 60 * 60 * 1000; // 48 Hours
+
+            function calculateProgress() {
+                const now = Date.now();
+                const elapsed = now - startTime;
+                let progress = elapsed / totalDuration;
+                if (progress > 1) progress = 1;
+                updateModalUIFromProgress(trackingNo, progress, elapsed);
             }
 
-            worker.postMessage({ action: 'start', trackingNo, startTime });
-
-            let savedProgress = parseFloat(localStorage.getItem(`shipment_${trackingNo}_progress`) || "0");
-            let savedElapsed = parseInt(localStorage.getItem(`shipment_${trackingNo}_elapsed`) || "0", 10);
-
-            if (savedProgress >= 1) {
-                modalStatusPill.textContent = "Delivered";
-                modalStatusPill.style.background = "#10b981";
-                stepTransit.className = "step-node completed";
-                stepTransit.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
-                stepDelivered.className = "step-node active";
-                stepDelivered.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-check"></i>';
-            } else {
-                modalStatusPill.textContent = "In Transit";
-                modalStatusPill.style.background = "var(--fedex-orange)";
-                stepPost.className = "step-node completed";
-                stepTransit.className = "step-node active";
-                stepDelivered.className = "step-node";
-            }
+            calculateProgress();
+            timerInterval = setInterval(calculateProgress, 1000);
 
             setTimeout(() => {
                 const originCoords = getCoordsForCity(shipment.from);
@@ -1212,11 +1165,7 @@
                     iconAnchor: [16, 16]
                 });
 
-                const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * savedProgress;
-                const currentLng = originCoords[1] + (destCoords[1] - originCoords[1]) * savedProgress;
-                movingMarker = L.marker([currentLat, currentLng], { icon: cargoIcon }).addTo(map);
-
-                updateModalUIFromProgress(trackingNo, savedProgress, savedElapsed);
+                movingMarker = L.marker(originCoords, { icon: cargoIcon }).addTo(map);
             }, 250);
         }
 
@@ -1227,26 +1176,24 @@
                 return;
             }
             if (!shipmentDatabase[val]) {
-                // If it's a new lookup not yet in storage, create a default profile and save it
-                shipmentDatabase[val] = { item: "International Parcel", from: "Lagos", to: "Accra" };
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(shipmentDatabase));
-                renderShipmentTable();
+                // Automatically create and sync to cloud if not found
+                const newShipment = { item: "International Parcel", from: "Lagos", to: "Accra", startTime: Date.now() };
+                db.ref('shipments/' + val).set(newShipment);
             }
             openTrackingModal(val);
         });
 
         closeModal.addEventListener('click', () => {
             modal.classList.remove('active');
+            if (timerInterval) clearInterval(timerInterval);
         });
 
         modal.addEventListener('click', (e) => {
             if (e.target === modal) {
                 modal.classList.remove('active');
+                if (timerInterval) clearInterval(timerInterval);
             }
         });
-
-        // Initial table load on startup
-        renderShipmentTable();
     </script>
 </body>
 </html>
