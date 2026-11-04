@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -881,16 +880,17 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // -------------------------------------------------------------
-        // TODO: Replace with your own free Firebase Project Configuration
+        // Firebase Configuration
         // -------------------------------------------------------------
         const firebaseConfig = {
-            apiKey: "YOUR_FIREBASE_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
-            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyCBpxKPAsIzAMZ1-zDJa4JQNuoiq5yCkQw",
+            authDomain: "fedex-3bfe6.firebaseapp.com",
+            databaseURL: "https://fedex-3bfe6-default-rtdb.firebaseio.com",
+            projectId: "fedex-3bfe6",
+            storageBucket: "fedex-3bfe6.firebasestorage.app",
+            messagingSenderId: "264567370913",
+            appId: "1:264567370913:web:9267df43ca67bf7a526ce0",
+            measurementId: "G-SWP0X83QB8"
         };
 
         // Initialize Firebase
@@ -938,7 +938,6 @@
             if (data) {
                 shipmentDatabase = data;
             } else {
-                // If database is empty, seed defaults
                 shipmentsRef.set(shipmentDatabase);
             }
             renderShipmentTable();
@@ -1056,21 +1055,16 @@
             document.getElementById('bookingFormSection').style.display = 'block';
         }
 
-        // Dynamic Coordinate Resolver
+        // Dynamic Coordinate Resolver with safe fallback to Lagos
         function getCoordsForCity(cityName) {
+            if (!cityName) return [6.5244, 3.3792];
             const cleanName = cityName.toLowerCase().trim();
             for (let key in cityCoordinates) {
                 if (cleanName.includes(key)) {
                     return cityCoordinates[key];
                 }
             }
-            let hash = 0;
-            for (let i = 0; i < cleanName.length; i++) {
-                hash = cleanName.charCodeAt(i) + ((hash << 5) - hash);
-            }
-            const lat = (Math.abs(hash) % 30) - 5;
-            const lng = ((hash >> 3) % 40) + 5;
-            return [lat, lng];
+            return [6.5244, 3.3792]; // Safe default fallback coordinate (Lagos)
         }
 
         function updateModalUIFromProgress(trackingNo, progress, elapsed) {
@@ -1108,7 +1102,7 @@
 
         // Open Tracking Modal & Calculate Universal 48-hour transit progress
         function openTrackingModal(trackingNo) {
-            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin", to: "Destination", startTime: Date.now() };
+            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Lagos", to: "Abuja", startTime: Date.now() };
             
             modalTrackingNo.textContent = trackingNo;
             modalItemName.textContent = shipment.item;
@@ -1176,12 +1170,21 @@
                 showToast('Please enter a valid tracking number.');
                 return;
             }
-            if (!shipmentDatabase[val]) {
-                // Automatically create and sync to cloud if not found
-                const newShipment = { item: "International Parcel", from: "Lagos", to: "Accra", startTime: Date.now() };
-                db.ref('shipments/' + val).set(newShipment);
+            
+            // Check local state first, otherwise fetch from Firebase cloud database directly
+            if (shipmentDatabase[val]) {
+                openTrackingModal(val);
+            } else {
+                db.ref('shipments/' + val).once('value').then((snapshot) => {
+                    const data = snapshot.val();
+                    if (data) {
+                        shipmentDatabase[val] = data;
+                        openTrackingModal(val);
+                    } else {
+                        showToast('Tracking number not found in cloud database.');
+                    }
+                });
             }
-            openTrackingModal(val);
         });
 
         closeModal.addEventListener('click', () => {
