@@ -736,7 +736,7 @@
                 <h3>Track Your Shipment</h3>
                 <p>Enter your tracking number to get real-time cloud updates</p>
                 <div class="track-input-group">
-                    <input type="text" id="trackingInput" placeholder="e.g. FDX-2026-123456" value="TG-70261005-762">
+                    <input type="text" id="trackingInput" placeholder="e.g. FDX-2026-123456" value="">
                     <button class="track-btn" id="trackBtn">Track <i class="fa-solid fa-arrow-right"></i></button>
                 </div>
             </div>
@@ -756,7 +756,7 @@
                             </tr>
                         </thead>
                         <tbody id="shipmentTableBody">
-                            <!-- Populated dynamically from Firebase Cloud -->
+                            <!-- Populated dynamically from Cloud Storage -->
                         </tbody>
                     </table>
                 </div>
@@ -825,14 +825,14 @@
                     <span class="sketch-title">Shipping Tracking Result</span>
                     <span class="status-pill" id="modalStatusPill">In Transit</span>
                 </div>
-                <div class="sketch-tracking-no" id="modalTrackingNo">TG-70261005-762</div>
+                <div class="sketch-tracking-no" id="modalTrackingNo">---</div>
                 
                 <div class="sketch-info-row">
-                    <div>Items: <span id="modalItemName">Document</span></div>
+                    <div>Items: <span id="modalItemName">---</span></div>
                 </div>
                 <div class="sketch-info-row">
-                    <div>From: <span id="modalFrom">Lagos</span></div>
-                    <div>To: <span id="modalTo">Abuja</span></div>
+                    <div>From: <span id="modalFrom">---</span></div>
+                    <div>To: <span id="modalTo">---</span></div>
                 </div>
 
                 <div class="sketch-steps">
@@ -880,17 +880,16 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
         // -------------------------------------------------------------
-        // Firebase Project Configuration
+        // TODO: Replace with your own free Firebase Project Configuration
         // -------------------------------------------------------------
         const firebaseConfig = {
-            apiKey: "AIzaSyCBpxKPAsIzAMZ1-zDJa4JQNuoiq5yCkQw",
-            authDomain: "fedex-3bfe6.firebaseapp.com",
-            databaseURL: "https://fedex-3bfe6-default-rtdb.firebaseio.com",
-            projectId: "fedex-3bfe6",
-            storageBucket: "fedex-3bfe6.firebasestorage.app",
-            messagingSenderId: "264567370913",
-            appId: "1:264567370913:web:9267df43ca67bf7a526ce0",
-            measurementId: "G-SWP0X83QB8"
+            apiKey: "YOUR_FIREBASE_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
+            appId: "YOUR_APP_ID"
         };
 
         // Initialize Firebase
@@ -903,16 +902,23 @@
             "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg", startTime: Date.now() - 7200000 }
         };
 
-        // Expanded Global & Country/City Coordinate Lookup
+        // Comprehensive Global & Country Coordinate Lookup Database
         const cityCoordinates = {
-            "colombia": [4.5709, -74.2973],
-            "nigeria": [9.0820, 8.6753],
             "usa": [37.0902, -95.7129],
             "united states": [37.0902, -95.7129],
             "cuba": [21.5218, -77.7812],
-            "kenya": [-0.0236, 37.9062],
+            "colombia": [4.5709, -74.2973],
+            "nigeria": [9.0820, 8.6753],
             "ghana": [7.9465, -1.0232],
+            "kenya": [-0.0236, 37.9062],
             "south africa": [-30.5595, 22.9375],
+            "united kingdom": [55.3781, -3.4360],
+            "uk": [55.3781, -3.4360],
+            "france": [46.2276, 2.2137],
+            "canada": [56.1304, -106.3468],
+            "brazil": [-14.2350, -51.9253],
+            "china": [35.8617, 104.1954],
+            "india": [20.5937, 78.9629],
             "lagos": [6.5244, 3.3792],
             "abuja": [9.0765, 7.3986],
             "benin city": [6.3350, 5.6037],
@@ -940,12 +946,18 @@
             "dubai": [25.2048, 55.2708]
         };
 
-        // Listen for real-time cloud changes across all devices & browsers
+        // Real-time Cloud Sync with Firebase & Backup Browser Memory
         shipmentsRef.on('value', (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 shipmentDatabase = data;
+                localStorage.setItem('cachedShipments', JSON.stringify(data));
             } else {
+                // If database is empty, check local backup or seed defaults
+                const localSaved = localStorage.getItem('cachedShipments');
+                if (localSaved) {
+                    shipmentDatabase = JSON.parse(localSaved);
+                }
                 shipmentsRef.set(shipmentDatabase);
             }
             renderShipmentTable();
@@ -1040,7 +1052,9 @@
                 startTime: Date.now()
             };
 
-            // Save to Firebase Cloud Database
+            // Save to Firebase Cloud Database & Local Storage instantly
+            shipmentDatabase[trackingNum] = newShipment;
+            localStorage.setItem('cachedShipments', JSON.stringify(shipmentDatabase));
             db.ref('shipments/' + trackingNum).set(newShipment);
 
             document.getElementById('generatedTrackingNumber').value = trackingNum;
@@ -1063,16 +1077,19 @@
             document.getElementById('bookingFormSection').style.display = 'block';
         }
 
-        // Dynamic Coordinate Resolver
+        // Precise Coordinate Resolver (Fixes random/incorrect country locations)
         function getCoordsForCity(cityName) {
-            if (!cityName) return [0, 0];
+            if (!cityName) return [6.5244, 3.3792]; // Default fallback location
             const cleanName = cityName.toLowerCase().trim();
+            
             for (let key in cityCoordinates) {
-                if (cleanName.includes(key)) {
+                if (cleanName.includes(key) || key.includes(cleanName)) {
                     return cityCoordinates[key];
                 }
             }
-            return [6.5244, 3.3792]; // Default fallback to Lagos if unrecognized
+            
+            // Safe fallback coordinate if custom name isn't in dictionary
+            return [7.3775, 3.9470];
         }
 
         function updateModalUIFromProgress(trackingNo, progress, elapsed) {
@@ -1110,24 +1127,12 @@
 
         // Open Tracking Modal & Calculate Universal 48-hour transit progress
         function openTrackingModal(trackingNo) {
-            const shipment = shipmentDatabase[trackingNo];
+            const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin", to: "Destination", startTime: Date.now() };
             
-            if (!shipment) {
-                showToast('Tracking number not found in cloud database.');
-                return;
-            }
-
             modalTrackingNo.textContent = trackingNo;
-            modalItemName.textContent = shipment.item || "Package";
+            modalItemName.textContent = shipment.item;
             modalFrom.textContent = shipment.from;
             modalTo.textContent = shipment.to;
-            modalStatusPill.textContent = "In Transit";
-            modalStatusPill.style.background = "var(--fedex-orange)";
-            stepTransit.className = "step-node active";
-            stepTransit.querySelector('.step-dot').innerHTML = '<i class="fa-solid fa-plane"></i>';
-            stepDelivered.className = "step-node";
-            stepDelivered.querySelector('.step-dot').innerHTML = '';
-            
             modal.classList.add('active');
 
             if (timerInterval) clearInterval(timerInterval);
@@ -1191,7 +1196,7 @@
                 return;
             }
             if (!shipmentDatabase[val]) {
-                showToast('Tracking number does not exist.');
+                showToast('Tracking number not found in cloud database.');
                 return;
             }
             openTrackingModal(val);
