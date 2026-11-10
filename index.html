@@ -787,11 +787,11 @@
                     </div>
                     <div class="input-group">
                         <label for="pickup">Pick Up Location</label>
-                        <input type="text" id="pickup" placeholder="e.g. Lagos, Nigeria" required>
+                        <input type="text" id="pickup" placeholder="e.g. United States" required>
                     </div>
                     <div class="input-group">
                         <label for="destination">Destination Location</label>
-                        <input type="text" id="destination" placeholder="e.g. Nairobi, Kenya" required>
+                        <input type="text" id="destination" placeholder="e.g. Mexico" required>
                     </div>
                     <button type="submit" class="btn-submit">Generate Tracking Number</button>
                 </form>
@@ -902,66 +902,35 @@
             "TG-2016109-782": { item: "Smartphone", from: "Accra", to: "Johannesburg", startTime: Date.now() - 7200000 }
         };
 
-        // Comprehensive Global & Country Coordinate Lookup Database
-        const cityCoordinates = {
-            "usa": [37.0902, -95.7129],
-            "united states": [37.0902, -95.7129],
-            "cuba": [21.5218, -77.7812],
-            "colombia": [4.5709, -74.2973],
-            "nigeria": [9.0820, 8.6753],
-            "ghana": [7.9465, -1.0232],
-            "kenya": [-0.0236, 37.9062],
-            "south africa": [-30.5595, 22.9375],
-            "united kingdom": [55.3781, -3.4360],
-            "uk": [55.3781, -3.4360],
-            "france": [46.2276, 2.2137],
-            "canada": [56.1304, -106.3468],
-            "brazil": [-14.2350, -51.9253],
-            "china": [35.8617, 104.1954],
-            "india": [20.5937, 78.9629],
-            "lagos": [6.5244, 3.3792],
-            "abuja": [9.0765, 7.3986],
-            "benin city": [6.3350, 5.6037],
-            "port harcourt": [4.8156, 7.0498],
-            "ibadan": [7.3775, 3.9470],
-            "accra": [5.6037, -0.1870],
-            "kumasi": [6.6885, -1.6244],
-            "dakar": [14.7167, -17.4677],
-            "abidjan": [5.3600, -4.0083],
-            "cairo": [30.0444, 31.2357],
-            "alexandria": [31.2001, 29.9187],
-            "casablanca": [33.5731, -7.5898],
-            "nairobi": [-1.2921, 36.8219],
-            "mombasa": [-4.0435, 39.6682],
-            "addis ababa": [9.0300, 38.7400],
-            "dar es salaam": [-6.7924, 39.2083],
-            "johannesburg": [-26.2041, 28.0473],
-            "cape town": [-33.9249, 18.4241],
-            "durban": [-29.8587, 31.0218],
-            "luanda": [-8.8390, 13.2894],
-            "london": [51.5074, -0.1278],
-            "paris": [48.8566, 2.3522],
-            "new york": [40.7128, -74.0060],
-            "tokyo": [35.6762, 139.6503],
-            "dubai": [25.2048, 55.2708]
-        };
-
-        // Real-time Cloud Sync with Firebase & Backup Browser Memory
-        shipmentsRef.on('value', (snapshot) => {
-            const data = snapshot.val();
-            if (data) {
-                shipmentDatabase = data;
-                localStorage.setItem('cachedShipments', JSON.stringify(data));
-            } else {
-                // If database is empty, check local backup or seed defaults
-                const localSaved = localStorage.getItem('cachedShipments');
-                if (localSaved) {
-                    shipmentDatabase = JSON.parse(localSaved);
+        // Real-time Cloud Sync with Firebase & Backup Browser Memory Fallback
+        try {
+            shipmentsRef.on('value', (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    shipmentDatabase = data;
+                    localStorage.setItem('cachedShipments', JSON.stringify(data));
+                } else {
+                    const localSaved = localStorage.getItem('cachedShipments');
+                    if (localSaved) {
+                        shipmentDatabase = JSON.parse(localSaved);
+                    }
+                    shipmentsRef.set(shipmentDatabase);
                 }
-                shipmentsRef.set(shipmentDatabase);
+                renderShipmentTable();
+            }, (error) => {
+                loadFromLocalStorageFallback();
+            });
+        } catch (e) {
+            loadFromLocalStorageFallback();
+        }
+
+        function loadFromLocalStorageFallback() {
+            const localSaved = localStorage.getItem('cachedShipments');
+            if (localSaved) {
+                shipmentDatabase = JSON.parse(localSaved);
             }
             renderShipmentTable();
-        });
+        }
 
         // Render shipments in the table dynamically
         function renderShipmentTable() {
@@ -1055,7 +1024,9 @@
             // Save to Firebase Cloud Database & Local Storage instantly
             shipmentDatabase[trackingNum] = newShipment;
             localStorage.setItem('cachedShipments', JSON.stringify(shipmentDatabase));
-            db.ref('shipments/' + trackingNum).set(newShipment);
+            try {
+                db.ref('shipments/' + trackingNum).set(newShipment);
+            } catch(e) {}
 
             document.getElementById('generatedTrackingNumber').value = trackingNum;
             document.getElementById('bookingFormSection').style.display = 'none';
@@ -1077,27 +1048,28 @@
             document.getElementById('bookingFormSection').style.display = 'block';
         }
 
-        // Precise Coordinate Resolver (Fixes random/incorrect country locations)
-        function getCoordsForCity(cityName) {
-            if (!cityName) return [6.5244, 3.3792]; // Default fallback location
-            const cleanName = cityName.toLowerCase().trim();
+        // Dynamically fetches coordinates for ANY text typed on the book page (No hardcoded countries)
+        async function getCoordsForCity(cityName) {
+            if (!cityName) return [20.0, -40.0]; 
+            const query = encodeURIComponent(cityName.trim());
             
-            for (let key in cityCoordinates) {
-                if (cleanName.includes(key) || key.includes(cleanName)) {
-                    return cityCoordinates[key];
+            try {
+                const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+                const data = await response.json();
+                
+                if (data && data.length > 0) {
+                    return [parseFloat(data[0].lat), parseFloat(data[0].lon)];
                 }
+            } catch (error) {
+                console.error("Geocoding fetch error:", error);
             }
             
-            // Safe fallback coordinate if custom name isn't in dictionary
-            return [7.3775, 3.9470];
+            return [20.0, -40.0]; // Safe global fallback coordinate
         }
 
-        function updateModalUIFromProgress(trackingNo, progress, elapsed) {
+        function updateModalUIFromCustomCoords(trackingNo, progress, elapsed, originCoords, destCoords) {
             const shipment = shipmentDatabase[trackingNo];
             if (!shipment) return;
-
-            const originCoords = getCoordsForCity(shipment.from);
-            const destCoords = getCoordsForCity(shipment.to);
 
             const currentLat = originCoords[0] + (destCoords[0] - originCoords[0]) * progress;
             const currentLng = originCoords[1] + (destCoords[1] - originCoords[1]) * progress;
@@ -1125,8 +1097,8 @@
             }
         }
 
-        // Open Tracking Modal & Calculate Universal 48-hour transit progress
-        function openTrackingModal(trackingNo) {
+        // Open Tracking Modal & Dynamically Resolve Custom Booked Locations
+        async function openTrackingModal(trackingNo) {
             const shipment = shipmentDatabase[trackingNo] || { item: "Package", from: "Origin", to: "Destination", startTime: Date.now() };
             
             modalTrackingNo.textContent = trackingNo;
@@ -1134,8 +1106,13 @@
             modalFrom.textContent = shipment.from;
             modalTo.textContent = shipment.to;
             modal.classList.add('active');
+            modalCurrentLocationText.textContent = "Resolving route coordinates...";
 
             if (timerInterval) clearInterval(timerInterval);
+
+            // Fetch exact coordinates dynamically based on what was typed on the book page
+            const originCoords = await getCoordsForCity(shipment.from);
+            const destCoords = await getCoordsForCity(shipment.to);
 
             const startTime = shipment.startTime || Date.now();
             const totalDuration = 48 * 60 * 60 * 1000; // 48 Hours
@@ -1145,24 +1122,20 @@
                 const elapsed = now - startTime;
                 let progress = elapsed / totalDuration;
                 if (progress > 1) progress = 1;
-                updateModalUIFromProgress(trackingNo, progress, elapsed);
+                updateModalUIFromCustomCoords(trackingNo, progress, elapsed, originCoords, destCoords);
             }
 
             calculateProgress();
             timerInterval = setInterval(calculateProgress, 1000);
 
             setTimeout(() => {
-                const originCoords = getCoordsForCity(shipment.from);
-                const destCoords = getCoordsForCity(shipment.to);
-
                 if (!map) {
-                    map = L.map('map').setView([7.3, 20.0], 3);
+                    map = L.map('map').setView([20, 0], 2);
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                         maxZoom: 18,
                         attribution: '© OpenStreetMap'
                     }).addTo(map);
                 } else {
-                    map.setView([7.3, 20.0], 3);
                     map.invalidateSize();
                 }
 
@@ -1185,7 +1158,7 @@
                     iconAnchor: [16, 16]
                 });
 
-                movingMarker = L.marker(originCoords, { icon: cargoIcon }).addTo(map);
+                    movingMarker = L.marker(originCoords, { icon: cargoIcon }).addTo(map);
             }, 250);
         }
 
